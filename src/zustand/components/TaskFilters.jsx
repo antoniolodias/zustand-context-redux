@@ -1,9 +1,6 @@
 import useStore from "../store/TaskStore";
 
 function TaskFilters() {
-  // Select only the specific pieces of state we need
-  // TODO: check if this works
-  // const {filter,searchTerm,setFilter,setSearchTerm} = useStore((state) => (state));
   const filter = useStore((state) => state.filter);
   const searchTerm = useStore((state) => state.searchTerm);
   const setFilter = useStore((state) => state.setFilter);

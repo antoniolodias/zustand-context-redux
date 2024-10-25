@@ -1,70 +1,112 @@
 import { create } from "zustand";
 
 const useStore = create((set, get) => ({
-  tasks: [],
-  filter: "all",
-  searchTerm: "",
-  filteredTasks: [], // Initialize filteredTasks as empty array
-  stats: {
-    total: 0,
-    completed: 0,
-    active: 0,
+  past: [],
+  present: {
+    tasks: [],
+    filter: "all",
+    searchTerm: "",
+  },
+  future: [],
+
+  stats: { total: 0, completed: 0, active: 0 },
+
+  // Helper function to save the current state to past
+  saveToPast() {
+    const { past, present } = get();
+    set({ past: [...past, present], future: [] });
   },
 
   addTask: (title) =>
     set((state) => {
+      state.saveToPast();
       const newTasks = [
-        ...state.tasks,
-        {
-          id: Date.now(),
-          title,
-          completed: false,
-          createdAt: new Date(),
-        },
+        ...state.present.tasks,
+        { id: Date.now(), title, completed: false, createdAt: new Date() },
       ];
       return {
-        tasks: newTasks,
-        filteredTasks: filterTasks(newTasks, state.filter, state.searchTerm),
+        present: {
+          ...state.present,
+          tasks: newTasks,
+        },
         stats: calculateStats(newTasks),
       };
     }),
 
   toggleTask: (id) =>
     set((state) => {
-      const newTasks = state.tasks.map((task) =>
+      state.saveToPast();
+      const newTasks = state.present.tasks.map((task) =>
         task.id === id ? { ...task, completed: !task.completed } : task
       );
       return {
-        tasks: newTasks,
-        filteredTasks: filterTasks(newTasks, state.filter, state.searchTerm),
+        present: {
+          ...state.present,
+          tasks: newTasks,
+        },
         stats: calculateStats(newTasks),
       };
     }),
 
   deleteTask: (id) =>
     set((state) => {
-      const newTasks = state.tasks.filter((task) => task.id !== id);
+      state.saveToPast();
+      const newTasks = state.present.tasks.filter((task) => task.id !== id);
       return {
-        tasks: newTasks,
-        filteredTasks: filterTasks(newTasks, state.filter, state.searchTerm),
+        present: {
+          ...state.present,
+          tasks: newTasks,
+        },
         stats: calculateStats(newTasks),
       };
     }),
 
   setFilter: (filter) =>
     set((state) => ({
-      filter,
-      filteredTasks: filterTasks(state.tasks, filter, state.searchTerm),
+      present: { ...state.present, filter },
     })),
 
   setSearchTerm: (searchTerm) =>
     set((state) => ({
-      searchTerm,
-      filteredTasks: filterTasks(state.tasks, state.filter, searchTerm),
+      present: { ...state.present, searchTerm },
     })),
+
+  // Computed property for filtered tasks
+  filteredTasks: () => {
+    const { tasks, filter, searchTerm } = get().present;
+    return filterTasks(tasks, filter, searchTerm);
+  },
+
+  undo: () =>
+    set((state) => {
+      if (state.past.length > 0) {
+        const previous = state.past[state.past.length - 1];
+        const newPast = state.past.slice(0, state.past.length - 1);
+        return {
+          future: [state.present, ...state.future],
+          past: newPast,
+          present: previous,
+        };
+      }
+      return state;
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.future.length > 0) {
+        const next = state.future[0];
+        const newFuture = state.future.slice(1);
+        return {
+          past: [...state.past, state.present],
+          present: next,
+          future: newFuture,
+        };
+      }
+      return state;
+    }),
 }));
 
-// Helper function to calculate stats
+// Helper functions remain the same
 function calculateStats(tasks) {
   return {
     total: tasks.length,
@@ -73,7 +115,6 @@ function calculateStats(tasks) {
   };
 }
 
-// Helper function to filter tasks
 function filterTasks(tasks, filter, searchTerm) {
   return tasks
     .filter((task) => {

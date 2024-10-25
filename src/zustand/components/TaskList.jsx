@@ -1,17 +1,33 @@
+import { useMemo } from "react";
 import useStore from "../store/TaskStore";
 
 function TaskList() {
-  const tasks = useStore((state) => state.filteredTasks);
+  const tasks = useStore((state) => state.present.tasks);
+  const filter = useStore((state) => state.present.filter);
+  const searchTerm = useStore((state) => state.present.searchTerm);
   const toggleTask = useStore((state) => state.toggleTask);
   const deleteTask = useStore((state) => state.deleteTask);
   console.log("TaskList rendered");
 
+  // Calculate filtered tasks only when tasks, filter, or searchTerm changes
+  const filteredTasks = useMemo(() => {
+    return tasks
+      .filter((task) => {
+        if (filter === "active") return !task.completed;
+        if (filter === "completed") return task.completed;
+        return true;
+      })
+      .filter((task) =>
+        task.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [tasks, filter, searchTerm]);
+
   return (
     <div className="space-y-2">
-      {tasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
         <div className="text-center text-gray-500 py-4">No tasks found</div>
       ) : (
-        tasks.map((task) => (
+        filteredTasks.map((task) => (
           <div
             key={task.id}
             className="flex items-center justify-between p-3 bg-white border rounded shadow-sm"

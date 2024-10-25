@@ -4,11 +4,47 @@ const TaskContext = createContext();
 
 export function TaskProvider({ children }) {
   const [tasks, setTasks] = useState([]);
+  const [history, setHistory] = useState({ past: [], future: [] });
   const [filter, setFilter] = useState("all"); // all, active, completed
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Helper function to update tasks and maintain history
+  const updateTasks = (newTasks) => {
+    setHistory((prev) => ({
+      past: [...prev.past, tasks], // Save current state to past
+      future: [], // Clear future on new action
+    }));
+    setTasks(newTasks);
+  };
+
+  // Undo Function
+  const undo = () => {
+    setHistory((prev) => {
+      if (prev.past.length === 0) return prev; // Nothing to undo
+      const previousTasks = prev.past[prev.past.length - 1];
+      setTasks(previousTasks); // Set previous tasks as the current tasks
+      return {
+        past: prev.past.slice(0, -1),
+        future: [tasks, ...prev.future], // Move current tasks to future
+      };
+    });
+  };
+
+  // Redo Function
+  const redo = () => {
+    setHistory((prev) => {
+      if (prev.future.length === 0) return prev; // Nothing to redo
+      const nextTasks = prev.future[0];
+      setTasks(nextTasks); // Set next tasks as the current tasks
+      return {
+        past: [...prev.past, tasks], // Move current tasks to past
+        future: prev.future.slice(1),
+      };
+    });
+  };
+
   const addTask = (title) => {
-    setTasks([
+    updateTasks([
       ...tasks,
       {
         id: Date.now(),
@@ -20,7 +56,7 @@ export function TaskProvider({ children }) {
   };
 
   const toggleTask = (id) => {
-    setTasks(
+    updateTasks(
       tasks.map((task) =>
         task.id === id ? { ...task, completed: !task.completed } : task
       )
@@ -28,7 +64,7 @@ export function TaskProvider({ children }) {
   };
 
   const deleteTask = (id) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+    updateTasks(tasks.filter((task) => task.id !== id));
   };
 
   const filteredTasks = tasks
@@ -59,6 +95,9 @@ export function TaskProvider({ children }) {
         searchTerm,
         setSearchTerm,
         stats,
+        undo,
+        redo, // Expose undo and redo functions
+        history,
       }}
     >
       {children}
