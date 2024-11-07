@@ -86,6 +86,7 @@ const useStore = create((set, get) => ({
           future: [state.present, ...state.future],
           past: newPast,
           present: previous,
+          stats: calculateStats(previous.tasks),
         };
       }
       return state;
@@ -100,6 +101,7 @@ const useStore = create((set, get) => ({
           past: [...state.past, state.present],
           present: next,
           future: newFuture,
+          stats: calculateStats(next.tasks),
         };
       }
       return state;
